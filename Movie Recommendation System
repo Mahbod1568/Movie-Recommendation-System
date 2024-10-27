@@ -1,0 +1,40 @@
+import pandas as pd
+from sklearn.neighbors import NearestNeighbors
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Load movie dataset
+movies = pd.read_csv("movies.csv")
+
+# Combine the genre and year to create a feature for recommendations
+movies["features"] = movies["genre"] + " " + movies["year"].astype(str)
+
+# Transform the feature column into TF-IDF vectors
+vectorizer = TfidfVectorizer()
+feature_matrix = vectorizer.fit_transform(movies["features"])
+
+# Train the KNN model
+knn = NearestNeighbors(n_neighbors=3, algorithm='auto')
+knn.fit(feature_matrix)
+
+# Recommendation function
+def recommend_movies(movie_title):
+    if movie_title not in movies["title"].values:
+        return "Movie not found in the dataset."
+    
+    movie_idx = movies[movies["title"] == movie_title].index[0]
+    movie_vector = feature_matrix[movie_idx]
+    distances, indices = knn.kneighbors([movie_vector], n_neighbors=4)
+    
+    recommendations = []
+    for idx in indices.flatten()[1:]:  # Exclude the input movie itself
+        recommendations.append(movies.iloc[idx]["title"])
+    
+    return recommendations
+
+# Example usage
+movie_title = "Toy Story"
+recommended_movies = recommend_movies(movie_title)
+
+print(f"Movies similar to '{movie_title}':")
+for i, movie in enumerate(recommended_movies, start=1):
+    print(f"{i}. {movie}")
